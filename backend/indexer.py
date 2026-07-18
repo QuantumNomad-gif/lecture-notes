@@ -2,11 +2,16 @@ import json
 import os
 from backend import config
 
+# This module only handles persistence (save/load), it deliberately knows
+# nothing about transcription or search, so each piece can be tested and
+# changed independently
+
 def save_transcript(audio_filename: str, segments: list[dict]) -> str:
     """Saves segments to a JSON file named after the source audio file.
-    Returns the path it was saved to."""
+    Returns the path it was saved to"""
     os.makedirs(config.TRANSCRIPTS_DIR, exist_ok=True)
 
+    # Derive the output filename from the audio file's name (without extension)
     base_name = os.path.splitext(os.path.basename(audio_filename))[0]
     output_path = os.path.join(config.TRANSCRIPTS_DIR, f"{base_name}.json")
 
@@ -15,7 +20,11 @@ def save_transcript(audio_filename: str, segments: list[dict]) -> str:
 
     return output_path
 
+
 def load_transcript(json_path: str) -> list[dict]:
-    """Loads segments back from a saved JSON file."""
+    """Loads segments back from a saved JSON file.
+    Returns the same list[dict] shape that transcribe() produces, so
+    downstream code (search.py) doesn't care whether segments came fresh
+    from Whisper or were reloaded from disk"""
     with open(json_path, "r", encoding="utf-8") as f:
         return json.load(f)
