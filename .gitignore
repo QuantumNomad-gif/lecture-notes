@@ -1,0 +1,21 @@
+# Audio recordings - never committed (no distribution permission from lecturer)
+audio/*
+!audio/.gitkeep
+
+# Transcripts derived from audio - also excluded for the same reason
+transcripts/*
+!transcripts/.gitkeep
+
+# Personal test/scratch scripts
+test.py
+test_transcribe.py
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# OS/editor cruft
+.DS_Store
+.vscode/

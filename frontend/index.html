@@ -1,0 +1,104 @@
+<!-- frontend/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Lecture Notes Search</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.4rem; }
+    select, input { padding: 8px; font-size: 1rem; margin-bottom: 12px; width: 100%; box-sizing: border-box; }
+    .result { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+    .result:hover { background: #f7f7f7; }
+    .timestamp { color: #666; font-size: 0.85rem; margin-right: 8px; }
+    audio { width: 100%; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Lecture Notes Search</h1>
+
+  <select id="lectureSelect"></select>
+  <input id="searchBox" type="text" placeholder="Search the lecture...">
+  <audio id="player" controls preload="metadata"></audio>
+  <div id="results"></div>
+
+  <script>
+    const API = "http://localhost:5000";
+    const lectureSelect = document.getElementById("lectureSelect");
+    const searchBox = document.getElementById("searchBox");
+    const player = document.getElementById("player");
+    const resultsDiv = document.getElementById("results");
+
+    // load available lectures into dropdown
+    fetch(`${API}/lectures`)
+      .then(res => res.json())
+      .then(lectures => {
+        lectures.forEach(name => {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          lectureSelect.appendChild(opt);
+        });
+        updateAudioSource();
+      });
+
+    function updateAudioSource() {
+      const lecture = lectureSelect.value;
+      player.src = `${API}/audio/${lecture}.m4a`;
+      player.load(); // force browser to fetch metadata for the new source
+    }
+
+    lectureSelect.addEventListener("change", updateAudioSource);
+
+    searchBox.addEventListener("input", () => {
+      const query = searchBox.value.trim();
+      const lecture = lectureSelect.value;
+      if (!query || !lecture) {
+        resultsDiv.innerHTML = "";
+        return;
+      }
+
+      fetch(`${API}/search?lecture=${lecture}&q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(results => renderResults(results));
+    });
+
+    function renderResults(results) {
+      resultsDiv.innerHTML = "";
+      results.forEach(seg => {
+        const div = document.createElement("div");
+        div.className = "result";
+        div.innerHTML = `<span class="timestamp">${formatTime(seg.start)}</span>${seg.text}`;
+        div.addEventListener("click", () => {
+          seekTo(seg.start);
+        });
+        resultsDiv.appendChild(div);
+      });
+    }
+
+    function seekTo(startTime) {
+      console.log("Seeking to:", startTime, "readyState:", player.readyState);
+
+      // readyState >= 1 (HAVE_METADATA) means duration/seekable info is loaded
+      if (player.readyState >= 1) {
+        player.currentTime = startTime;
+        player.play();
+      } else {
+        // metadata not ready yet — wait for it, then seek
+        const onReady = () => {
+          player.currentTime = startTime;
+          player.play();
+          player.removeEventListener("loadedmetadata", onReady);
+        };
+        player.addEventListener("loadedmetadata", onReady);
+      }
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m}:${s.toString().padStart(2, "0")}`;
+    }
+  </script>
+</body>
+</html>
